@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: shadowtrace-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: shadowtrace
+      POSTGRES_USER: shadowtrace
+      POSTGRES_PASSWORD: shadowtrace_demo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shadowtrace -d shadowtrace"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: shadowtrace-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg://shadowtrace:shadowtrace_demo@postgres:5432/shadowtrace
+      - SECRET_KEY=shadowtrace_secret_key_sih2026_demo_key_998123
+      - ENVIRONMENT=development
+      - DEMO_MODE=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: shadowtrace-frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
